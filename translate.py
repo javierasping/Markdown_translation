@@ -8,10 +8,7 @@ import frontmatter  # pip install python-frontmatter
 input_language = 'es'
 output_language = 'en'
 url = "http://localhost:5000/translate"
-base_directory = Path('/home/javiercruces/Documentos/sentinel/content/posts')
-
-# Modifica los directorios de entrada y salida según la estructura de tu directorio
-input_directory = base_directory 
+input_directory = Path('/home/javiercruces/Documentos/sentinel/content/posts')
 
 # SUBROUTINES
 
@@ -103,6 +100,11 @@ for file_path in Path(input_directory).rglob("*.md"):
 
         # Split content into lines and check if any line starts with ![]( to skip it
         lines = text.content.splitlines()
+
+        # Preserve the first 7 lines
+        preserved_lines = lines[:7]
+        lines = lines[7:]
+
         processed_lines = []
 
         for line in lines:
@@ -112,19 +114,64 @@ for file_path in Path(input_directory).rglob("*.md"):
                 # Translate non-image lines
                 processed_lines.append(translate_text(line, input_language, output_language))
 
-        # Join the lines back together into a single string
-        text.content = "\n".join(processed_lines)
-
         # Postprocess to reinsert the original segments
         print(f"Postprocessing content of {file_path.name}")
-        text.content = postprocess_text(text.content, placeholders)
+        translated_content = postprocess_text("\n".join(processed_lines), placeholders)
+
+        # Ensure proper formatting of the header
+        fixed_header = []
+        for line in preserved_lines:
+            line = line.strip()
+            if line.startswith("date:"):
+                line = line.replace(" ", "").replace("T", "T").replace("+", "+")
+                line = line.replace("date:", "date: ")  # Ensure a space after "date:"
+            elif line.startswith("hero:"):
+                line = line.replace(" / ", "/")
+            elif line.startswith("#"):  # Process lines starting with "#"
+                line = line.lstrip()  # Remove leading spaces
+                # Remove any extra space between multiple '#' symbols
+                line = line.replace("# #", "##")  # For title level 2 (e.g., ##)
+                line = line.replace("# ##", "###")  # For title level 3 (e.g., ###)
+                line = line.replace("# ###", "####")  # For title level 4 (e.g., ####)
+                line = line.replace("# ####", "#####")  # For title level 5 (e.g., #####)
+                line = line.replace("# #####", "######")  # For title level 6 (e.g., ######)
+            else:
+                line = translate_text(line, input_language, output_language)  # Ensure header fields are translated
+            fixed_header.append(line)
+
+        # Combine header and translated content
+        text.content = "\n".join(fixed_header) + "\n" + translated_content
 
         # Create the new file path with the ".en.md" suffix in the same directory as the original
         write_file_path = file_path.with_name(file_path.stem + '.en.md')
         print(f"Writing translated file to: {write_file_path}")
-        
-        # write new Markdown file in the same directory as the original
-        with open(write_file_path, 'w') as f:
-            f.write(frontmatter.dumps(text))
 
-print(f"Translation completed.")
+        # Write new Markdown file in the same directory as the original
+        with open(write_file_path, 'w', encoding='utf-8') as f:
+            f.write(frontmatter.dumps(text).lstrip("\ufeff"))  # Remove unwanted BOM characters
+
+        # Now correct the titles in the file by removing the space after the '#'
+        with open(write_file_path, 'r+', encoding='utf-8') as f:
+            content = f.readlines()
+
+            # Correct the titles by removing spaces between '#' and the title
+            corrected_content = []
+            for line in content:
+                if line.lstrip().startswith("#"):  # Check if line is a header
+                    # Remove any space between '#' symbols and the title
+                    line = line.replace(" #", "#")  # Remove space between '#' symbols
+                corrected_content.append(line)
+
+            # Rewind and write the corrected content
+            f.seek(0)
+            f.truncate()  # Clear the file content
+            f.writelines(corrected_content)  # Write the corrected lines back
+
+            # Now, remove the first 5 lines and insert the '---'
+            corrected_content = corrected_content[5:]  # Remove the first 5 lines
+            corrected_content.insert(0, "---\n")  # Add the line with ---
+            f.seek(0)  # Go back to the beginning of the file
+            f.truncate()  # Clear the file content
+            f.writelines(corrected_content)  # Write the remaining lines back
+
+    print(f"Translation completed.")

@@ -11,6 +11,9 @@ def process_non_index_file(file_path, input_language, output_language, translate
     # Líneas que deben ser respetadas (1, 3, 5, 6, 7) – indexadas desde 1
     lines_to_skip = {1, 3, 5, 6, 7}  # Usamos un conjunto para mejorar la eficiencia de la búsqueda
     
+    # Variable para controlar si estamos dentro de un bloque de código
+    inside_code_block = False
+
     # Función para restaurar el formato del título (sin espacios entre # y el título)
     def restore_title_format(line):
         # Buscar líneas que empiecen con 1 a 5 #
@@ -38,8 +41,13 @@ def process_non_index_file(file_path, input_language, output_language, translate
     for idx, line in enumerate(lines, start=1):  # Usamos enumerate para contar las líneas
         stripped_line = line.strip()  # Eliminar saltos de línea y espacios innecesarios
         
-        # Si la línea comienza con ![](
-        if line.lstrip().startswith("![]("):
+        # Detectar si estamos dentro de un bloque de código
+        if stripped_line.startswith("```"):  # Inicio o fin del bloque de código
+            inside_code_block = not inside_code_block  # Cambiar el estado de si estamos dentro de un bloque de código
+            translated_lines.append(line)  # Añadir la línea tal cual (inicia o termina el bloque de código)
+        elif inside_code_block:  # Si estamos dentro de un bloque de código, no traducir
+            translated_lines.append(line)  # Añadir la línea tal cual
+        elif line.lstrip().startswith("![]("):  # Si la línea comienza con ![](
             translated_lines.append(line)  # Añadirla tal cual está, no traducirla
         elif idx in lines_to_skip:  # Si la línea es una de las que debemos respetar
             translated_lines.append(line)  # Añadirla tal cual está

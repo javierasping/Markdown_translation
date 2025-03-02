@@ -8,7 +8,7 @@ from post import process_non_index_file
 input_language = 'es'
 output_language = 'en'
 url = "http://localhost:5000/translate"
-input_directory = Path('/home/javiercruces/Documentos/test')
+input_directory = Path('/home/javiercruces/Documentos/sentinel/content/posts')
 
 # Función para traducir texto utilizando la API de LibreTranslate
 def translate_text(text, input_language, output_language):

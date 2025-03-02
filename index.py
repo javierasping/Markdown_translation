@@ -9,34 +9,38 @@ def process_index_file(file_path, input_language, output_language, translate_tex
     # Cargar el contenido del archivo Markdown
     text = frontmatter.load(file_path)
     
-    # Extraer y traducir el contenido YAML
+    # Extraer el contenido YAML
     yaml_content = text.metadata
-    
-    # Traducir el título y el nombre del menú
+
+    # Traducir el título si existe
     if 'title' in yaml_content:
         yaml_content['title'] = translate_text(yaml_content['title'], input_language, output_language)
-    
-    if 'menu' in yaml_content and 'sidebar' in yaml_content['menu']:
-        sidebar = yaml_content['menu']['sidebar']
-        if 'name' in sidebar:
-            sidebar['name'] = translate_text(sidebar['name'], input_language, output_language)
 
-    # Cambiar el orden del YAML para el caso específico de español a inglés
-    if input_language == 'es' and output_language == 'en':
-        # Orden correcto para el archivo en inglés
-        translated_yaml_content = {
-            'menu': yaml_content['menu'],
-            'title': yaml_content['title']
-        }
-    else:
-        # Para otros idiomas, no modificamos el orden
-        translated_yaml_content = yaml_content
+    # Verificar la existencia de 'menu' y 'sidebar' antes de acceder a ellos
+    if isinstance(yaml_content.get('menu'), dict):
+        menu_content = yaml_content['menu']
+        
+        if isinstance(menu_content.get('sidebar'), dict):
+            sidebar = menu_content['sidebar']
+            
+            # Traducir el campo 'name' si existe
+            if 'name' in sidebar:
+                sidebar['name'] = translate_text(sidebar['name'], input_language, output_language)
+
+    # Asegurar que se mantenga la estructura original del YAML
+    translated_yaml_content = {
+        'title': yaml_content.get('title', '')  # Mantiene 'title', aunque no exista en algunos casos
+    }
+    
+    if 'menu' in yaml_content:  # Solo agrega 'menu' si existe en el original
+        translated_yaml_content['menu'] = yaml_content['menu']
 
     # Asignamos el contenido traducido de vuelta al texto
     text.metadata = translated_yaml_content
-    
+
     # Escribir el archivo traducido
-    write_file_path = file_path.with_name(file_path.stem + '.en.md')
-    with open(write_file_path, 'w') as f:
+    write_file_path = file_path.with_name(file_path.stem + f'.{output_language}.md')
+    with open(write_file_path, 'w', encoding='utf-8') as f:
         f.write(frontmatter.dumps(text))
-    print(f"Escribiendo archivo _index.md traducido en: {write_file_path}")
+    
+    print(f"Archivo _index.md traducido guardado en: {write_file_path}")

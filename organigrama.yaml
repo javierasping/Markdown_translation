@@ -1,0 +1,44 @@
+base_de_datos:
+  children: []
+  identifier: base_de_datos
+  title: Base de datos
+ci_cd:
+  children: []
+  identifier: ci_cd
+  title: CI/CD Jenkins
+cortafuegos:
+  children: []
+  identifier: cortafuegos
+  title: Cortafuegos
+docker:
+  children: []
+  identifier: docker
+  title: Docker
+drivers:
+  children: []
+  identifier: drivers
+  title: Drivers Linux
+iaw:
+  children: []
+  identifier: iaw
+  title: Aplicaciones webs
+redes:
+  children: []
+  identifier: redes
+  title: Redes
+seguridad:
+  children: []
+  identifier: seguridad
+  title: Seguridad
+servicios:
+  children: []
+  identifier: servicios
+  title: Servicios
+sistemas:
+  children: []
+  identifier: sistemas
+  title: Sistemas
+vpn:
+  children: []
+  identifier: vpn
+  title: VPN

@@ -31,6 +31,10 @@ def postprocess_text(translated_text, placeholders):
 
 # function to translate text using LibreTranslate API
 def translate_text(text, input_language, output_language):
+    # Si el texto está vacío, no se hace la petición y se devuelve el texto vacío
+    if not text.strip():
+        return text
+    
     # build Json payload to send to LibreTranslate API
     payload = {
         "q": text,
@@ -48,7 +52,11 @@ def translate_text(text, input_language, output_language):
     if response.status_code == 200:
         return response.json()['translatedText']
     else:
+        # Imprimir detalles de error y lo enviado
         print(f"Error with translation: {response.text}")
+        print(f"Error with status code: {response.status_code}")
+        print(f"Payload sent: {json.dumps(payload, indent=2)}")
+        print(f"Headers sent: {json.dumps(headers, indent=2)}")
         return text
 
 # Function to check if a line starts with ![](

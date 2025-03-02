@@ -7,18 +7,18 @@
 
 import json
 from pathlib import Path
-
 import re
 import requests
 import frontmatter  # pip install python-frontmatter
 
 # VARIABLES
-input_language = 'en'
-output_language = 'fr'
+input_language = 'es'
+output_language = 'en'
 url = "http://localhost:5000/translate"
-base_directory = Path('/Users/ad7588/projects/translation/test_files')
-input_directory = base_directory / input_language 
-output_directory = base_directory / output_language
+base_directory = Path('/home/javiercruces/Documentos/sentinel/content/posts')
+
+# Modifica los directorios de entrada y salida según la estructura de tu directorio
+input_directory = base_directory 
 
 # SUBROUTINES
 
@@ -26,25 +26,21 @@ output_directory = base_directory / output_language
 def preprocess_text(text, placeholders):
     # placeholder pattern (you can customize this)
     pattern = r'```(.*?)```'
-    #pattern = r'\[NO_TRANSLATE\](.*?)\[/NO_TRANSLATE\]'
     matches = re.findall(pattern, text, re.DOTALL)
     for i, match in enumerate(matches):
         placeholder = f'__PLACEHOLDER_{i}__'
         placeholders[placeholder] = match
         text = text.replace(f'```{match}```', placeholder)
-        #text = text.replace(f'[NO_TRANSLATE]{match}[/NO_TRANSLATE]', placeholder)
     return text
 
 # function to reinsert the original segments back into the text
 def postprocess_text(translated_text, placeholders):
     for placeholder, original_text in placeholders.items():
         translated_text = translated_text.replace(placeholder, f'```{original_text}```')
-        #translated_text = translated_text.replace(placeholder, '[NO_TRANSLATE]' + original_text + '[/NO_TRANSLATE]')
     return translated_text
 
 # function to translate text using LibreTranslate API
 def translate_text(text, input_language, output_language):
-
     # build Json payload to send to LibreTranslate API
     payload = {
         "q": text,
@@ -57,34 +53,59 @@ def translate_text(text, input_language, output_language):
 
     # send payload to LibreTranslate API
     response = requests.post(url, data=json.dumps(payload), headers=headers)
+    
+    # Verificar la respuesta de la API
+    if response.status_code == 200:
+        return response.json()['translatedText']
+    else:
+        print(f"Error with translation: {response.text}")
+        return text
 
-    return response.json()['translatedText']
+# Function to check if a line starts with ![](
+def is_image_line(line):
+    return line.lstrip().startswith("![](")
 
 # MAIN PROGRAM
 
+print(f"Starting translation from {input_language} to {output_language}...")
+
 # iterate over files with .md suffix in the input directory
-for file_path in Path(input_directory).rglob("*.md"):    
+for file_path in Path(input_directory).rglob("*.md"):
+    print(f"Processing file: {file_path}")
+
     # read Markdown file
     text = frontmatter.load(file_path)
 
     placeholders = {}
 
-    # preprocess text content of Markdown file to replace not-to-be-translated segments of text with placeholders
+    # Preprocess text content of Markdown file to replace not-to-be-translated segments of text with placeholders
+    print(f"Preprocessing content of {file_path.name}")
     text.content = preprocess_text(text.content, placeholders)
 
-    # translate the processed text using LibreTranslate API
-    text.content = translate_text(text.content, input_language, output_language)
+    # Split content into lines and check if any line starts with ![]( to skip it
+    lines = text.content.splitlines()
+    processed_lines = []
 
-    # postprocess to reinsert the original segments
+    for line in lines:
+        if is_image_line(line):  # If it's an image link, don't translate
+            processed_lines.append(line)
+        else:
+            # Translate non-image lines
+            processed_lines.append(translate_text(line, input_language, output_language))
+
+    # Join the lines back together into a single string
+    text.content = "\n".join(processed_lines)
+
+    # Postprocess to reinsert the original segments
+    print(f"Postprocessing content of {file_path.name}")
     text.content = postprocess_text(text.content, placeholders)
 
-    # create output subdirectory if it doesn't exist
-    relative_file_path = file_path.parent.relative_to(input_directory)
-    write_directory = output_directory / relative_file_path
-    write_directory.mkdir(parents=True, exist_ok=True)
+    # Create the new file path with the ".en.md" suffix in the same directory as the original
+    write_file_path = file_path.with_name(file_path.stem + '.en.md')
+    print(f"Writing translated file to: {write_file_path}")
     
-    write_file_path = write_directory / file_path.name
- 
-    # write new Markdown file
+    # write new Markdown file in the same directory as the original
     with open(write_file_path, 'w') as f:
         f.write(frontmatter.dumps(text))
+
+print(f"Translation completed.")
